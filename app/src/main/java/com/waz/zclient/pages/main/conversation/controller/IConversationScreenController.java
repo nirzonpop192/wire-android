@@ -17,7 +17,6 @@
  */
 package com.waz.zclient.pages.main.conversation.controller;
 
-import android.support.annotation.IntDef;
 import android.view.View;
 import com.waz.api.Message;
 import com.waz.api.OtrClient;
@@ -26,19 +25,6 @@ import com.waz.model.ConvId;
 import com.waz.zclient.pages.main.participants.dialog.DialogLaunchMode;
 
 public interface IConversationScreenController {
-
-
-    @IntDef({CONVERSATION_LIST_SWIPE,
-             CONVERSATION_LIST_LONG_PRESS,
-             CONVERSATION_DETAILS,
-             USER_PROFILE_PARTICIPANTS,
-             USER_PROFILE_SEARCH})
-    @interface ConversationMenuRequester { }
-    int CONVERSATION_LIST_SWIPE = 0;
-    int CONVERSATION_LIST_LONG_PRESS = 1;
-    int CONVERSATION_DETAILS = 2;
-    int USER_PROFILE_PARTICIPANTS = 3;
-    int USER_PROFILE_SEARCH = 4;
 
     void addConversationControllerObservers(ConversationScreenControllerObserver conversationScreenControllerObserver);
 
@@ -82,7 +68,7 @@ public interface IConversationScreenController {
 
     void setPopoverLaunchedMode(DialogLaunchMode launchedMode);
 
-    void showConversationMenu(@ConversationMenuRequester int requester, ConvId convId);
+    void showConversationMenu(boolean inConvList, ConvId convId);
 
     DialogLaunchMode getPopoverLaunchMode();
 

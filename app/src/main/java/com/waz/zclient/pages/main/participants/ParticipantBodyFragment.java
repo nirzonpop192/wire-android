@@ -38,6 +38,7 @@ import com.waz.model.ConvId;
 import com.waz.model.ConversationData;
 import com.waz.zclient.BaseActivity;
 import com.waz.zclient.R;
+import com.waz.zclient.common.controllers.SoundController;
 import com.waz.zclient.common.controllers.ThemeController;
 import com.waz.zclient.common.controllers.UserAccountsController;
 import com.waz.zclient.controllers.accentcolor.AccentColorObserver;
@@ -51,10 +52,8 @@ import com.waz.zclient.core.stores.connect.IConnectStore;
 import com.waz.zclient.core.stores.conversation.ConversationChangeRequester;
 import com.waz.zclient.core.stores.network.NetworkAction;
 import com.waz.zclient.core.stores.participants.ParticipantsStoreObserver;
-import com.waz.zclient.common.controllers.SoundController;
 import com.waz.zclient.pages.BaseFragment;
 import com.waz.zclient.pages.main.conversation.controller.ConversationScreenControllerObserver;
-import com.waz.zclient.pages.main.conversation.controller.IConversationScreenController;
 import com.waz.zclient.pages.main.participants.views.ParticipantsChatheadAdapter;
 import com.waz.zclient.pages.main.participants.views.ParticipantsGridView;
 import com.waz.zclient.pages.main.pickuser.controller.IPickUserController;
@@ -281,8 +280,7 @@ public class ParticipantBodyFragment extends BaseFragment<ParticipantBodyFragmen
     }
 
     @Override
-    public void onShowConversationMenu(@IConversationScreenController.ConversationMenuRequester int requester,
-                                       ConvId convId) {
+    public void onShowConversationMenu(boolean inConvList, ConvId convId) {
 
     }
 
@@ -373,10 +371,7 @@ public class ParticipantBodyFragment extends BaseFragment<ParticipantBodyFragmen
                             getContainer().toggleBlockUser(otherUser,
                                                            otherUser.getConnectionStatus() != User.ConnectionStatus.BLOCKED);
                         } else {
-                            getControllerFactory().getConversationScreenController().showConversationMenu(
-                                IConversationScreenController.CONVERSATION_DETAILS,
-                                new ConvId(conversation.getId())
-                            );
+                            getControllerFactory().getConversationScreenController().showConversationMenu(false, new ConvId(conversation.getId()));
                         }
                     }
 

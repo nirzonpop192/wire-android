@@ -43,8 +43,8 @@ import com.waz.api.Verification;
 import com.waz.model.ConvId;
 import com.waz.zclient.BaseActivity;
 import com.waz.zclient.R;
-import com.waz.zclient.common.views.UserDetailsView;
 import com.waz.zclient.common.controllers.ThemeController;
+import com.waz.zclient.common.views.UserDetailsView;
 import com.waz.zclient.controllers.accentcolor.AccentColorObserver;
 import com.waz.zclient.controllers.currentfocus.IFocusController;
 import com.waz.zclient.controllers.globallayout.KeyboardVisibilityObserver;
@@ -55,7 +55,6 @@ import com.waz.zclient.core.stores.network.NetworkAction;
 import com.waz.zclient.core.stores.participants.ParticipantsStoreObserver;
 import com.waz.zclient.pages.BaseFragment;
 import com.waz.zclient.pages.main.conversation.controller.ConversationScreenControllerObserver;
-import com.waz.zclient.pages.main.conversation.controller.IConversationScreenController;
 import com.waz.zclient.ui.text.AccentColorEditText;
 import com.waz.zclient.ui.utils.KeyboardUtils;
 import com.waz.zclient.ui.utils.MathUtils;
@@ -465,8 +464,7 @@ public class ParticipantHeaderFragment extends BaseFragment<ParticipantHeaderFra
     }
 
     @Override
-    public void onShowConversationMenu(@IConversationScreenController.ConversationMenuRequester int requester,
-                                       ConvId convId) {
+    public void onShowConversationMenu(boolean inConvList, ConvId convId) {
 
     }
 

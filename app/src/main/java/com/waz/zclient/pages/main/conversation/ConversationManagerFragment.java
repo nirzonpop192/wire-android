@@ -50,7 +50,6 @@ import com.waz.zclient.core.stores.connect.IConnectStore;
 import com.waz.zclient.core.stores.conversation.ConversationChangeRequester;
 import com.waz.zclient.pages.BaseFragment;
 import com.waz.zclient.pages.main.conversation.controller.ConversationScreenControllerObserver;
-import com.waz.zclient.pages.main.conversation.controller.IConversationScreenController;
 import com.waz.zclient.pages.main.drawing.DrawingFragment;
 import com.waz.zclient.pages.main.participants.ParticipantFragment;
 import com.waz.zclient.pages.main.participants.SingleParticipantFragment;
@@ -305,8 +304,7 @@ public class ConversationManagerFragment extends BaseFragment<ConversationManage
     }
 
     @Override
-    public void onShowConversationMenu(@IConversationScreenController.ConversationMenuRequester int requester,
-                                       ConvId convId) {
+    public void onShowConversationMenu(boolean inConvList, ConvId convId) {
 
     }
 

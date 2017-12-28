@@ -178,7 +178,6 @@ object WireApplication {
 
     bind [CursorController]           to new CursorController()
     bind [ConversationListController] to new ConversationListController()
-    bind [OptionsMenuController]           to new OptionsMenuController()
 
     /**
       * Since tracking controllers will immediately instantiate other necessary controllers, we keep them separated

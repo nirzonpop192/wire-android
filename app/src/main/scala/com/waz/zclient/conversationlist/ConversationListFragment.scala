@@ -65,6 +65,7 @@ abstract class ConversationListFragment extends BaseFragment[ConversationListFra
   lazy val usersController        = inject[UsersController]
   lazy val screenController       = inject[IConversationScreenController]
   lazy val pickUserController     = inject[IPickUserController]
+  lazy val convScreenController   = inject[IConversationScreenController]
 
   protected var subs = Set.empty[Subscription]
 
@@ -87,7 +88,7 @@ abstract class ConversationListFragment extends BaseFragment[ConversationListFra
         conv.convType != ConversationType.OneToOne &&
         conv.convType != ConversationType.WaitForConnection) {
       } else
-        screenController.showConversationMenu(IConversationScreenController.CONVERSATION_LIST_LONG_PRESS, conv.id)
+        screenController.showConversationMenu(true, conv.id)
     }
   }
 
