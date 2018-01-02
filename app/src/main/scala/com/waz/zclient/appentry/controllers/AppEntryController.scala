@@ -24,6 +24,7 @@ import com.waz.api.{ClientRegistrationState, ImageAsset, KindOfAccess}
 import com.waz.client.RegistrationClientImpl.ActivateResult
 import com.waz.client.RegistrationClientImpl.ActivateResult.{Failure, PasswordExists}
 import com.waz.model._
+import com.waz.model.otr.Client
 import com.waz.service.ZMessaging
 import com.waz.service.tracking.TrackingService
 import com.waz.threading.Threading
@@ -39,7 +40,6 @@ import com.waz.zclient.tracking.{AddPhotoOnRegistrationEvent, GlobalTrackingCont
 import com.waz.zclient.{Injectable, Injector}
 
 import scala.concurrent.Future
-import scala.util.Random
 
 class AppEntryController(implicit inj: Injector, eventContext: EventContext) extends Injectable {
 
@@ -57,6 +57,13 @@ class AppEntryController(implicit inj: Injector, eventContext: EventContext) ext
     Some(token) <- invitationToken
     req <- Signal.future(ZMessaging.currentAccounts.retrieveInvitationDetails(PersonalInvitationToken(token)))
   } yield req
+
+  val userClientsCount = for {
+    Some(manager) <- ZMessaging.currentAccounts.activeAccountManager
+    Some(user)  <- currentUser
+    selfClientId  <- manager.accountData.map(_.clientId)
+    clients       <- Signal.future(manager.storage.otrClientsStorage.get(user.id))
+  } yield clients.fold(0)(_.clients.values.count(client => !selfClientId.contains(client.id)))
 
   invitationToken.onUi{
     case Some (token) =>
@@ -90,7 +97,8 @@ class AppEntryController(implicit inj: Injector, eventContext: EventContext) ext
     account <- currentAccount
     user <- currentUser.orElse(Signal.const(None))
     firstPageState <- firstStage
-    state <- Signal.const(stateForAccountAndUser(account, user, firstPageState)).collect{ case s if s != Waiting => s }
+    clientCount <- userClientsCount.orElse(Signal(0))
+    state <- Signal.const(stateForAccountAndUser(account, user, firstPageState, clientCount)).collect{ case s if s != Waiting => s }
   } yield state
 
   val autoConnectInvite = for {
@@ -113,7 +121,7 @@ class AppEntryController(implicit inj: Injector, eventContext: EventContext) ext
     case false =>
   }
 
-  def stateForAccountAndUser(account: Option[AccountData], user: Option[UserData], firstPageState: FirstStage): AppEntryStage = {
+  def stateForAccountAndUser(account: Option[AccountData], user: Option[UserData], firstPageState: FirstStage, clientCount: Int): AppEntryStage = {
     ZLog.verbose(s"Current account and user: $account $user")
     (account, user) match {
       case (None, _) =>
@@ -130,10 +138,12 @@ class AppEntryController(implicit inj: Injector, eventContext: EventContext) ext
         VerifyPhoneStage
       case (Some(accountData), _) if accountData.clientRegState == ClientRegistrationState.PASSWORD_MISSING || (accountData.pendingPhone == accountData.phone && !accountData.canLogin && accountData.cookie.isEmpty) =>
         InsertPasswordStage
+      case (Some(accountData), _) if accountData.email.isEmpty && accountData.pendingEmail.isEmpty && clientCount >= 1 =>
+        AddEmailStage
+      case (Some(accountData), _) if accountData.pendingEmail.isDefined && accountData.password.isDefined && (!accountData.verified || (accountData.email.isEmpty && clientCount >= 1) ) =>
+        VerifyEmailStage
       case (Some(accountData), _) if accountData.clientRegState == ClientRegistrationState.LIMIT_REACHED =>
         DeviceLimitStage
-      case (Some(accountData), _) if accountData.pendingEmail.isDefined && accountData.password.isDefined && !accountData.verified =>
-        VerifyEmailStage
       case (Some(accountData), _) if accountData.regWaiting =>
         AddNameStage
       case (Some(accountData), None) if accountData.cookie.isDefined || accountData.accessToken.isDefined =>
@@ -385,6 +395,7 @@ object AppEntryController {
   object VerifyPhoneStage    extends AppEntryStage
   object AddHandleStage      extends AppEntryStage
   object InsertPasswordStage extends AppEntryStage
+  object AddEmailStage       extends AppEntryStage
 
   object SetTeamEmail            extends AppEntryStage { override val depth = 2 }
   object VerifyTeamEmail         extends AppEntryStage { override val depth = 3 }
