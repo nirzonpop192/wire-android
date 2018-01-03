@@ -21,16 +21,15 @@ import android.support.v7.widget.RecyclerView
 import android.view.{LayoutInflater, View, ViewGroup}
 import com.waz.ZLog
 import com.waz.ZLog.ImplicitTag._
-import com.waz.api.{Contact, ContactDetails, User}
+import com.waz.api.{Contact, ContactDetails}
 import com.waz.model._
 import com.waz.threading.Threading
 import com.waz.utils.events.EventContext
 import com.waz.zclient._
 import com.waz.zclient.common.controllers.{SearchUserController, UserAccountsController}
 import com.waz.zclient.usersearch.SearchResultOnItemTouchListener
+import com.waz.zclient.usersearch.adapters.PickUsersAdapter._
 import com.waz.zclient.usersearch.viewholders._
-import com.waz.zclient.usersearch.views.ContactRowView
-import PickUsersAdapter._
 import scala.concurrent.duration._
 
 class PickUsersAdapter(topUsersOnItemTouchListener: SearchResultOnItemTouchListener,
@@ -48,12 +47,6 @@ class PickUsersAdapter(topUsersOnItemTouchListener: SearchResultOnItemTouchListe
   private var mergedResult = Seq[SearchResult]()
   private var collapsedContacts = true
   private var collapsedGroups = true
-
-  private val contactsCallback = new ContactRowView.Callback {
-    override def onContactListContactClicked(contactDetails: ContactDetails) = adapterCallback.onContactListContactClicked(contactDetails)
-    override def isUserSelected(user: User) = adapterCallback.getSelectedUsers.contains(UserId(user.getId))
-    override def onContactListUserClicked(user: User) = adapterCallback.onContactListUserClicked(UserId(user.getId))
-  }
 
   private var topUsers = IndexedSeq.empty[UserData]
   private var localResults = IndexedSeq.empty[UserData]
@@ -177,7 +170,7 @@ class PickUsersAdapter(topUsersOnItemTouchListener: SearchResultOnItemTouchListe
         holder.asInstanceOf[AddressBookSectionHeaderViewHolder].bind(item.name)
       case AddressBookContact =>
         val contact  = contacts(item.index)
-        holder.asInstanceOf[AddressBookContactViewHolder].bind(contact, contactsCallback)
+        holder.asInstanceOf[AddressBookContactViewHolder].bind(contact, adapterCallback)
       case Expand =>
         val itemCount = if (item.section == ContactsSection) contacts.size + localResults.size else conversations.size
         holder.asInstanceOf[SectionExpanderViewHolder].bind(itemCount, new View.OnClickListener() {

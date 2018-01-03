@@ -28,7 +28,7 @@ import com.waz.ZLog.ImplicitTag._
 import com.waz.api.User.ConnectionStatus
 import com.waz.api.User.ConnectionStatus._
 import com.waz.api.impl.AccentColor
-import com.waz.api.{ContactDetails, User}
+import com.waz.api.ContactDetails
 import com.waz.model.{AssetData, UserData, UserId}
 import com.waz.service.ZMessaging
 import com.waz.service.assets.AssetService.BitmapResult
@@ -120,8 +120,6 @@ class ChatheadView(val context: Context, val attrs: AttributeSet, val defStyleAt
   }
 
   def clearUser() = ctrl.assignInfo ! None
-
-  def setUser(user: User) = Option(user).fold(throw new IllegalArgumentException("User should not be null"))(u => setUserId(UserId(u.getId)))
 
   def setUserId(userId: UserId) = Option(userId).fold(throw new IllegalArgumentException("UserId should not be null"))(u => ctrl.assignInfo ! Some(Left(u)))
 
