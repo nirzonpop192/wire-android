@@ -125,20 +125,20 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
   private var dialog: AlertDialog = null
   private var searchUserController: SearchUserController = null
 
-  private var searchResultRecyclerView: RecyclerView = null
-  private var conversationToolbar: Toolbar = null
-  private var startUiToolbar: Toolbar = null
-  private var toolbarHeader: TextView = null
-  private var divider: View = null
-  private var errorMessageViewHeader: TypefaceTextView = null
-  private var errorMessageViewSendInvite: LinearLayout = null
-  private var errorMessageViewBody: TypefaceTextView = null
-  private var errorMessageViewContainer: LinearLayout = null
-  private var conversationQuickMenu: ConversationQuickMenu = null
-  private var userSelectionConfirmationButton: FlatWireButton = null
-  private var inviteButton: FlatWireButton = null
-  private var searchBoxView: SearchEditText = null
-  private var toolbarTitle: TypefaceTextView = null
+  private lazy val searchResultRecyclerView = view[RecyclerView](R.id.rv__pickuser__header_list_view)
+  private lazy val conversationToolbar = view[Toolbar](R.id.t_pickuser_toolbar)
+  private lazy val startUiToolbar = view[Toolbar](R.id.pickuser_toolbar)
+  private lazy val toolbarHeader = view[TextView](R.id.ttv__pickuser__add_header)
+  private lazy val divider = view[View](R.id.v__pickuser__divider)
+  private lazy val errorMessageViewHeader = view[TypefaceTextView](R.id.ttv_pickuser__error_header)
+  private lazy val errorMessageViewSendInvite = view[LinearLayout](R.id.ll_pickuser__error_invite)
+  private lazy val errorMessageViewBody = view[TypefaceTextView](R.id.ttv_pickuser__error_body)
+  private lazy val errorMessageViewContainer = view[LinearLayout](R.id.fl_pickuser__error_message_container)
+  private lazy val conversationQuickMenu = view[ConversationQuickMenu](R.id.cqm__pickuser__quick_menu)
+  private lazy val userSelectionConfirmationButton = view[FlatWireButton](R.id.confirmation_button)
+  private lazy val inviteButton = view[FlatWireButton](R.id.invite_button)
+  private lazy val searchBoxView = view[SearchEditText](R.id.sbv__search_box)
+  private lazy val toolbarTitle = view[TypefaceTextView](R.id.pickuser_title)
 
   private var teamPermissions = Set[AccountData.Permission]()
 
@@ -212,12 +212,10 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
 
   }
 
-  override def onCreateView(inflater: LayoutInflater, viewContainer: ViewGroup, savedInstanceState: Bundle): View = {
-    val rootView: View = inflater.inflate(R.layout.fragment_pick_user, viewContainer, false)
-    divider = ViewUtils.getView(rootView, R.id.v__pickuser__divider)
-    startUiToolbar = ViewUtils.getView(rootView, R.id.pickuser_toolbar)
-    toolbarHeader = ViewUtils.getView(rootView, R.id.ttv__pickuser__add_header)
-    conversationToolbar = ViewUtils.getView(rootView, R.id.t_pickuser_toolbar)
+  override def onCreateView(inflater: LayoutInflater, viewContainer: ViewGroup, savedInstanceState: Bundle): View =
+    inflater.inflate(R.layout.fragment_pick_user, viewContainer, false)
+
+  override def onViewCreated(rootView: View, savedInstanceState: Bundle): Unit = {
     conversationToolbar.setNavigationOnClickListener(new View.OnClickListener() {
       def onClick(v: View): Unit = {
         closeStartUI()
@@ -227,7 +225,6 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
     searchUserController = new SearchUserController(SearchState("", hasSelectedUsers = false, addingToConversation = addingToConversation))
     searchUserController.setContacts(getStoreFactory.zMessagingApiStore.getApi.getContacts)
     searchResultAdapter = new PickUsersAdapter(new SearchResultOnItemTouchListener(getActivity, this), this, searchUserController, themeController.isDarkTheme || !isAddingToConversation)
-    searchResultRecyclerView = ViewUtils.getView(rootView, R.id.rv__pickuser__header_list_view)
     searchResultRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity))
     searchResultRecyclerView.setAdapter(searchResultAdapter)
     searchResultRecyclerView.addOnItemTouchListener(new SearchResultOnItemTouchListener(getActivity, this))
@@ -240,23 +237,15 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
         }
       })
     }
-    searchBoxView = ViewUtils.getView(rootView, R.id.sbv__search_box)
     searchBoxView.setCallback(searchBoxViewCallback)
-    conversationQuickMenu = ViewUtils.getView(rootView, R.id.cqm__pickuser__quick_menu)
     conversationQuickMenu.setCallback(this)
     conversationQuickMenu.setVisibility(View.GONE)
-    userSelectionConfirmationButton = ViewUtils.getView(rootView, R.id.confirmation_button)
     userSelectionConfirmationButton.setGlyph(R.string.glyph__add_people)
     userSelectionConfirmationButton.setVisibility(View.GONE)
-    inviteButton = ViewUtils.getView(rootView, R.id.invite_button)
     inviteButton.setText(R.string.pref_invite_title)
     inviteButton.setGlyph(R.string.glyph__invite)
     // Error message
-    errorMessageViewContainer = ViewUtils.getView(rootView, R.id.fl_pickuser__error_message_container)
     errorMessageViewContainer.setVisibility(View.GONE)
-    errorMessageViewHeader = ViewUtils.getView(rootView, R.id.ttv_pickuser__error_header)
-    errorMessageViewBody = ViewUtils.getView(rootView, R.id.ttv_pickuser__error_body)
-    errorMessageViewSendInvite = ViewUtils.getView(rootView, R.id.ll_pickuser__error_invite)
     showLoadingBarDelay = getResources.getInteger(R.integer.people_picker__loading_bar__show_delay)
     if (isAddingToConversation) {
       inviteButton.setVisibility(View.GONE)
@@ -282,7 +271,6 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
       conversationToolbar.setVisibility(View.GONE)
       startUiToolbar.setVisibility(View.VISIBLE)
       divider.setVisibility(View.GONE)
-      toolbarTitle = ViewUtils.getView(rootView, R.id.pickuser_title)
       searchBoxView.applyDarkTheme(true)
       startUiToolbar.inflateMenu(R.menu.toolbar_close_white)
       startUiToolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
@@ -394,21 +382,6 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
     getContainer.getLoadingViewIndicator.hide()
     getControllerFactory.getGlobalLayoutController.removeKeyboardVisibilityObserver(this)
     super.onStop()
-  }
-
-  override def onDestroyView(): Unit = {
-    errorMessageViewHeader = null
-    errorMessageViewSendInvite = null
-    errorMessageViewBody = null
-    errorMessageViewContainer = null
-    searchResultRecyclerView = null
-    conversationQuickMenu = null
-    userSelectionConfirmationButton = null
-    inviteButton = null
-    searchBoxView = null
-    conversationToolbar = null
-    toolbarHeader = null
-    super.onDestroyView()
   }
 
   override def onBackPressed: Boolean = {
