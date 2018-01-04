@@ -178,9 +178,8 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
     }
   }
 
-  private def createSummaryNotification(account: AccountId, silent: Boolean, nots: Seq[NotificationInfo], teamName: Option[String]): Unit =
-    if (nots.isEmpty) notManager.cancel(toNotificationGroupId(account))
-    else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M || !notManager.getActiveNotifications.exists(_.getId == toNotificationGroupId(account))) {
+  private def createSummaryNotification(account: AccountId, silent: Boolean, nots: Seq[NotificationInfo], teamName: Option[String]): Option[Notification] =
+    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M || !notManager.getActiveNotifications.exists(_.getId == toNotificationGroupId(account))) {
       verbose(s"creating summary notification")
 
       val inboxStyle = new NotificationCompat.InboxStyle()
@@ -202,66 +201,41 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
       teamName.foreach(builder.setContentInfo)
       notificationColor(account).foreach(builder.setColor)
 
-      notManager.notify(toNotificationGroupId(account), builder.build())
+      Option(builder.build())
+    } else None
+
+  private def createConvNotifications(account: AccountId, silent: Boolean, nots: Seq[NotificationInfo], teamName: Option[String]): Future[Unit] = if (nots.isEmpty) {
+    notManager.cancel(toNotificationGroupId(account))
+    Future.successful({})
+  } else {
+    val (ephs, others) = nots.partition(_.isEphemeral)
+    val groupedConvs = others.groupBy(_.convId) ++ ephs.groupBy(_.convId).map {
+      case (key, values) => ConvId(key + "eph") -> values
     }
 
-  private def createConvNotifications(account: AccountId, silent: Boolean, nots: Seq[NotificationInfo], teamName: Option[String]): Future[Unit] = {
-    verbose(s"Notifications updated for account: $account: shouldBeSilent: $silent, $nots")
+    val teamNameOpt = if (groupedConvs.keys.size > 1) None else teamName
 
-    def publishNotification(convId: Option[ConvId], notification: Notification) = {
-
-      convId match {
-        case Some(cId) =>
-          verbose(s"creating not with conv id: ${toNotificationConvId(account, cId)}")
-          notManager.notify(toNotificationConvId(account, cId), notification)
-        case _ =>
-          verbose(s"creating not with group id: ${toNotificationGroupId(account)}")
-          notManager.notify(toNotificationGroupId(account), notification)
-      }
-    }
-
-    val publishFuture = if (BundleEnabled) {
-      createSummaryNotification(account, silent, nots, teamName)
-
-      // ephemeral notifications should be processed as separate bundles containing one notification each
-      val (ephs, others) = nots.partition(_.isEphemeral)
-      val groupedConvs = others.groupBy(_.convId) ++ ephs.map(e => ConvId() -> Seq(e)).toMap
-      val isGrouped = groupedConvs.keys.size > 1
-
-      Future.sequence(
-        groupedConvs.map {
-          case (convId, convNots) if convNots.size == 1 =>
-            val allBeenDisplayed = convNots.forall(_.hasBeenDisplayed)
-            getPictureForNotifications(account, convNots).map { pic =>
-              publishNotification(Some(convId), getSingleMessageNotification(account, convNots.head, silent, if (isGrouped) None else teamName, noTicker = allBeenDisplayed, pic))
-            }
-          case (convId, convNots) =>
-            val allBeenDisplayed = convNots.forall(_.hasBeenDisplayed)
-            getPictureForNotifications(account, convNots).map { pic =>
-              publishNotification(Some(convId), getMultipleMessagesNotification(account, convNots, silent, noTicker = allBeenDisplayed, if (isGrouped) None else teamName, pic))
-            }
-        }.toSeq
-      )
-    } else {
-      getPictureForNotifications(account, nots).map { pic =>
-        if (nots.nonEmpty) {
-          val allBeenDisplayed = nots.forall(_.hasBeenDisplayed)
-          val notification = if (nots.size == 1)
-            getSingleMessageNotification(account, nots.head, silent, teamName, noTicker = allBeenDisplayed, pic)
-          else
-            getMultipleMessagesNotification(account, nots, silent, noTicker = allBeenDisplayed, teamName, pic)
-
-          publishNotification(None, notification)
-        } else {
-          notManager.cancel(toNotificationGroupId(account))
+    val notFutures = groupedConvs.map {
+      case (convId, convNots) if convNots.size == 1 =>
+        getPictureForNotifications(account, convNots).map { pic =>
+          convId -> getSingleMessageNotification(account, convNots.head, silent, teamNameOpt, noTicker = convNots.forall(_.hasBeenDisplayed), pic)
         }
-      }
+      case (convId, convNots) =>
+        getPictureForNotifications(account, convNots).map { pic =>
+          convId -> getMultipleMessagesNotification(account, convNots, silent, noTicker = nots.forall(_.hasBeenDisplayed), teamNameOpt, pic)
+        }
     }
 
-    publishFuture.map { _ =>
-      Option(ZMessaging.currentGlobal.notifications.markAsDisplayed(account, nots.map(_.id)))
-    }
+   Future.sequence(notFutures).map { ns =>
 
+      if (BundleEnabled) {
+        val nMap = ns.map { case (cId, not) => toNotificationConvId(account, cId) -> not }.toMap
+        createSummaryNotification(account, silent, nots, teamName).fold(nMap)(summary => nMap + (toNotificationGroupId(account) -> summary))
+      } else
+        ns.map { case (_, not) => toNotificationGroupId(account) -> not }.toMap
+
+    }.map(_.foreach { case (id, not) => notManager.notify(id, not) })
+     .map { _ => Option(ZMessaging.currentGlobal.notifications.markAsDisplayed(account, nots.map(_.id))) }
   }
 
   private def attachNotificationSoundAndLed(builder: NotificationCompat.Builder, ns: Seq[NotificationInfo], silent: Boolean) = {
@@ -350,7 +324,7 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
 
     if (!n.isEphemeral) builder.setContentText(body)
 
-    if (n.tpe != NotificationType.CONNECT_REQUEST) {
+    if (n.tpe != NotificationType.CONNECT_REQUEST && !n.isEphemeral) {
       builder.addAction(R.drawable.ic_action_call, getString(R.string.notification__action__call), CallIntent(accountId, n.convId, requestBase + 1))
       addQuickReplyAction(builder, accountId, n.convId, requestBase + 2)
     }
@@ -370,8 +344,13 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
     val users = ns.map(_.userName).toSet
     val isSingleConv = convIds.size == 1
 
+    assert(!ns.exists(_.isEphemeral) || ns.forall(_.isEphemeral), "Should not process a mixed sequence of notifications, ephemeral and not ephemeral together")
+
+    val isEphemeral = ns.exists(_.isEphemeral)
+
     val titleText = if (isSingleConv) {
-      if (ns.head.isGroupConv) ns.head.convName.getOrElse("")
+      if (isEphemeral) getQuantityString(R.plurals.notification__message__ephemeral, 1)
+      else if (ns.head.isGroupConv) ns.head.convName.getOrElse("")
       else ns.head.convName.orElse(ns.head.userName).getOrElse("")
     } else
       getQuantityString(R.plurals.notification__new_messages__multiple, ns.size, Integer.valueOf(ns.size), convIds.size.toString)
@@ -404,10 +383,11 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
 
     if (isSingleConv) {
       val requestBase = System.currentTimeMillis.toInt
-      builder
-        .setContentIntent(OpenConvIntent(accountId, convIds.head, requestBase))
-        .addAction(R.drawable.ic_action_call, getString(R.string.notification__action__call), CallIntent(accountId, convIds.head, requestBase + 1))
+      builder.setContentIntent(OpenConvIntent(accountId, convIds.head, requestBase))
+      if(!isEphemeral) {
+        builder.addAction(R.drawable.ic_action_call, getString(R.string.notification__action__call), CallIntent(accountId, convIds.head, requestBase + 1))
         addQuickReplyAction(builder, accountId, convIds.head, requestBase + 2)
+      }
     }
     else builder.setContentIntent(OpenAccountIntent(accountId))
 
@@ -456,14 +436,15 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
 
       case _ => ""
     }
-    getMessageSpannable(header, body, isTextMessage)
+
+    getMessageSpannable(header, body, isTextMessage, n.isEphemeral)
   }
 
   @TargetApi(21)
-  private def getMessageSpannable(header: String, body: String, isTextMessage: Boolean) = {
+  private def getMessageSpannable(header: String, body: String, isTextMessage: Boolean, isEphemeral: Boolean) = {
     val messageSpannable = new SpannableString(header + body)
     messageSpannable.setSpan(new ForegroundColorSpan(Color.BLACK), 0, header.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-    if (!isTextMessage) {
+    if (!isTextMessage || isEphemeral) {
       messageSpannable.setSpan(new StyleSpan(Typeface.ITALIC), header.length, messageSpannable.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     messageSpannable
