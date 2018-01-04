@@ -225,7 +225,7 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
 
       // ephemeral notifications should be processed as separate bundles containing one notification each
       val (ephs, others) = nots.partition(_.isEphemeral)
-      val groupedConvs = others.groupBy(_.convId) ++ ephs.map(e => ConvId(e.convId.str + "eph") -> Seq(e)).toMap
+      val groupedConvs = others.groupBy(_.convId) ++ ephs.map(e => ConvId() -> Seq(e)).toMap
       val isGrouped = groupedConvs.keys.size > 1
 
       Future.sequence(
@@ -449,7 +449,7 @@ class MessageNotificationsController(implicit inj: Injector, cxt: Context, event
       case CONNECT_ACCEPTED                       => getString(R.string.notification__message__single__accept_request, n.userName.getOrElse(""))
       case MESSAGE_SENDING_FAILED                 => getString(R.string.notification__message__send_failed)
 
-      case LIKE if n.likedContent.nonEmpty        => n.likedContent.map {
+      case LIKE if n.likedContent.nonEmpty        => n.likedContent.collect {
         case LikedContent.PICTURE     => getString(R.string.notification__message__liked_picture)
         case LikedContent.TEXT_OR_URL => getString(R.string.notification__message__liked, n.message)
       }.getOrElse(getString(R.string.notification__message__liked_message))
