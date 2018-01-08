@@ -28,7 +28,6 @@ import com.waz.ZLog.ImplicitTag._
 import com.waz.api.User.ConnectionStatus
 import com.waz.api.User.ConnectionStatus._
 import com.waz.api.impl.AccentColor
-import com.waz.api.ContactDetails
 import com.waz.model.{AssetData, UserData, UserId}
 import com.waz.service.ZMessaging
 import com.waz.service.assets.AssetService.BitmapResult
@@ -40,6 +39,7 @@ import com.waz.utils.events.{EventContext, Signal}
 import com.waz.utils.{NameParts, returning}
 import com.waz.zclient.common.controllers.UserAccountsController
 import com.waz.zclient.ui.utils.TypefaceUtils
+import com.waz.zclient.usersearch.ContactsController.ContactDetails
 import com.waz.zclient.utils.ContextUtils._
 import com.waz.zclient.{Injectable, Injector, R, ViewHelper}
 
@@ -284,13 +284,13 @@ protected class ChatheadController(val setSelectable:            Boolean        
 
   val hasBeenInvited = chatheadInfo.map {
     case Some(Left(user)) => false
-    case Some(Right(contactDetails)) => contactDetails.hasBeenInvited
+    case Some(Right(contactDetails)) => contactDetails.invited
     case _ => false
   }
 
   val initials = chatheadInfo.map {
     case Some(Left(user)) => NameParts.parseFrom(user.name).initials
-    case Some(Right(contactDetails)) => contactDetails.getInitials
+    case Some(Right(contactDetails)) => contactDetails.contact.initials
     case _ => ""
   }
 

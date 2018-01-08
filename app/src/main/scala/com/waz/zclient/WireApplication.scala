@@ -68,6 +68,7 @@ import com.waz.zclient.common.views.ImageController
 import com.waz.zclient.controllers.calling.ICallingController
 import com.waz.zclient.controllers.confirmation.IConfirmationController
 import com.waz.zclient.controllers.currentfocus.IFocusController
+import com.waz.zclient.usersearch.ContactsController
 
 object WireApplication {
   var APP_INSTANCE: WireApplication = _
@@ -136,6 +137,7 @@ object WireApplication {
     bind [NavigationController]      to new NavigationController()
     bind [AppEntryController]        to new AppEntryController()
     bind [SignInController]          to new SignInController()
+    bind [ContactsController]        to new ContactsController()
 
 
     // current conversation data
