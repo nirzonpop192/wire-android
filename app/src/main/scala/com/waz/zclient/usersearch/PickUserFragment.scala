@@ -25,6 +25,7 @@ import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.widget.{LinearLayoutManager, RecyclerView, Toolbar}
 import android.text.TextUtils
+import android.view.View.OnClickListener
 import android.view._
 import android.view.animation.Animation
 import android.view.inputmethod.EditorInfo
@@ -41,7 +42,7 @@ import com.waz.service.{SearchState, ZMessaging}
 import com.waz.threading.Threading
 import com.waz.utils.events.Signal
 import com.waz.zclient.common.controllers.global.AccentColorController
-import com.waz.zclient.common.controllers.{SearchUserController, ThemeController, UserAccountsController}
+import com.waz.zclient.common.controllers.{IntegrationsController, SearchUserController, ThemeController, UserAccountsController}
 import com.waz.zclient.common.views.{ChatheadWithTextFooter, FlatWireButton, PickableElement}
 import com.waz.zclient.controllers.currentfocus.IFocusController
 import com.waz.zclient.controllers.globallayout.KeyboardVisibilityObserver
@@ -151,6 +152,7 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
   private lazy val accentColor            = inject[AccentColorController].accentColor.map(_.getColor())
   private lazy val themeController        = inject[ThemeController]
   private lazy val conversationController = inject[ConversationController]
+  private lazy val integrationsController = inject[IntegrationsController]
 
   private lazy val pickUserController     = inject[IPickUserController]
   private lazy val convScreenController   = inject[IConversationScreenController]
@@ -180,6 +182,7 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
     override def afterTextChanged(s: String): Unit = {
       val filter = searchBoxView.getSearchFilter
       searchUserController.setFilter(filter)
+      integrationsController.searchQuery ! filter
       onSearchBoxHasNewSearchFilter(filter)
       if (filter.isEmpty && searchBoxView.getElements.isEmpty)
         onSearchBoxIsEmpty()
@@ -227,7 +230,14 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
 
     searchUserController = new SearchUserController(SearchState("", hasSelectedUsers = false, addingToConversation = addingToConversation))
     searchUserController.setContacts(getStoreFactory.zMessagingApiStore.getApi.getContacts)
-    searchResultAdapter = new PickUsersAdapter(new SearchResultOnItemTouchListener(getActivity, this), this, searchUserController, themeController.isDarkTheme || !isAddingToConversation)
+
+    searchResultAdapter = new PickUsersAdapter(
+      new SearchResultOnItemTouchListener(getActivity, this),
+      this,
+      searchUserController,
+      integrationsController,
+      themeController.isDarkTheme || !isAddingToConversation
+    )
     searchResultRecyclerView = ViewUtils.getView(rootView, R.id.rv__pickuser__header_list_view)
     searchResultRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity))
     searchResultRecyclerView.setAdapter(searchResultAdapter)
@@ -241,6 +251,7 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
         }
       })
     }
+
     searchBoxView = ViewUtils.getView(rootView, R.id.sbv__search_box)
     searchBoxView.setCallback(searchBoxViewCallback)
     conversationQuickMenu = ViewUtils.getView(rootView, R.id.cqm__pickuser__quick_menu)
@@ -341,6 +352,34 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
       teamPermissions = accountData.selfPermissions
     }
 
+    val peopleOrServicesViewContainer: LinearLayout = ViewUtils.getView(rootView, R.id.ttv__pickuser__people_or_services_tab)
+    if (userAccountsController.isTeamAccount) {
+      val peopleButton = findById[TypefaceTextView](rootView, R.id.ttv__pickuser__people_tab)
+      val servicesButton = findById[TypefaceTextView](rootView, R.id.ttv__pickuser__services_tab)
+
+      peopleButton.setOnClickListener(new OnClickListener {
+        override def onClick(v: View): Unit = searchResultAdapter.peopleOrServices ! false
+      })
+
+      servicesButton.setOnClickListener(new OnClickListener {
+        override def onClick(v: View): Unit = searchResultAdapter.peopleOrServices ! true
+      })
+
+      searchResultAdapter.peopleOrServices.onUi { shouldShowServices =>
+        val (onButton, offButton) = if (shouldShowServices) (servicesButton, peopleButton) else (peopleButton, servicesButton)
+          verbose(s"IN people or services is $shouldShowServices")
+          onButton.setBackground(ContextCompat.getDrawable(getContext, R.drawable.selector__reg__signin))
+          onButton.setTextColor(ContextCompat.getColor(getContext, R.color.white))
+          offButton.setBackground(null)
+          offButton.setTextColor(ContextCompat.getColor(getContext, R.color.white_40))
+
+      }
+
+      peopleOrServicesViewContainer.setVisibility(View.VISIBLE)
+    } else {
+      peopleOrServicesViewContainer.setVisibility(View.GONE)
+    }
+
     rootView
   }
 
@@ -358,6 +397,8 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
     }
     else {
       searchUserController.setFilter("")
+      integrationsController.searchQuery ! ""
+      searchResultAdapter.peopleOrServices ! false
     }
     if (!isAddingToConversation && isPrivateAccount){
       implicit val ec = Threading.Ui
@@ -764,6 +805,8 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
   private def closeStartUI(): Unit = {
     KeyboardUtils.hideKeyboard(getActivity)
     searchUserController.setFilter("")
+    integrationsController.searchQuery ! ""
+    searchResultAdapter.peopleOrServices ! false
     pickUserController.hidePickUser(getCurrentPickerDestination)
   }
 
