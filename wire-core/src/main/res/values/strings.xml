@@ -1271,4 +1271,7 @@
 
     <string name="app_entry_email_sent">Email sent</string>
     <string name="teams_set_username_subtitle">Usernames help people find you.</string>
+
+    <string name="teams_invitations_skip">SKIP</string>
+    <string name="teams_invitations_done">DONE</string>
 </resources>
