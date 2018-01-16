@@ -227,6 +227,7 @@ class ViewHolder[T <: View](id: Int, finder: ViewFinder) {
   def get: T = view.getOrElse { returning(finder.findById[T](id)) { t => view = Some(t) } }
 
   def clear() = view = Option.empty
+
 }
 
 trait PreferenceHelper extends Preference with Injectable with EventContext {

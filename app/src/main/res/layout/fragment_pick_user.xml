@@ -129,8 +129,6 @@
             />
     </LinearLayout>
 
-
-
     <android.support.v7.widget.RecyclerView
         android:id="@+id/rv__pickuser__header_list_view"
         android:layout_width="match_parent"
@@ -229,5 +227,6 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/flat_wire_button_height"
         />
+
 
 </LinearLayout>

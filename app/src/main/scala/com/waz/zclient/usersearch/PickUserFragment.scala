@@ -46,11 +46,12 @@ import com.waz.zclient.common.controllers.{IntegrationsController, SearchUserCon
 import com.waz.zclient.common.views.{ChatheadWithTextFooter, FlatWireButton, PickableElement}
 import com.waz.zclient.controllers.currentfocus.IFocusController
 import com.waz.zclient.controllers.globallayout.KeyboardVisibilityObserver
-import com.waz.zclient.controllers.navigation.NavigationController
+import com.waz.zclient.controllers.navigation.{NavigationController, Page}
 import com.waz.zclient.controllers.userpreferences.IUserPreferencesController
 import com.waz.zclient.conversation.ConversationController
 import com.waz.zclient.core.stores.conversation.ConversationChangeRequester
 import com.waz.zclient.core.stores.network.DefaultNetworkAction
+import com.waz.zclient.integrations.IntegrationDetailsFragment
 import com.waz.zclient.pages.BaseFragment
 import com.waz.zclient.pages.main.conversation.controller.IConversationScreenController
 import com.waz.zclient.pages.main.participants.dialog.DialogLaunchMode
@@ -858,5 +859,17 @@ class PickUserFragment extends BaseFragment[PickUserFragment.Container]
 
   private def updateShareContacts(share: Boolean): Unit ={
     zms.head.flatMap(_.userPrefs.preference(UserPreferences.ShareContacts).update(share)) (Threading.Background)
+  }
+
+  override def onIntegrationClicked(data: IntegrationData): Unit = {
+    KeyboardUtils.hideKeyboard(getActivity)
+    verbose(s"onIntegrationClicked(${data.id})")
+
+    getParentFragment.getChildFragmentManager.beginTransaction
+      .replace(R.id.fl__conversation_list_main, IntegrationDetailsFragment.newInstance(data.provider, data.id), IntegrationDetailsFragment.Tag)
+      .addToBackStack(IntegrationDetailsFragment.Tag)
+      .commit()
+
+    getControllerFactory.getNavigationController.setLeftPage(Page.INTEGRATION_DETAILS, PickUserFragment.TAG)
   }
 }
